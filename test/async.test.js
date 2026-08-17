@@ -1,6 +1,6 @@
 let { suite } = require('uvu')
 let { spy } = require('nanospy')
-let { is, match, ok } = require('uvu/assert')
+let { is, match, ok, not } = require('uvu/assert')
 let Module = require('module')
 let crypto = require('crypto')
 
@@ -54,6 +54,14 @@ for (let type of ['node', 'browser']) {
         }
       })
     )
+  })
+
+  nanoidSuite('avoids pool pollution, infinite loop', async () => {
+    // A non-integer size is truncated instead of looping forever.
+    is((await nanoid(2.1)).length, 2)
+    let second = await nanoid()
+    let third = await nanoid()
+    not.equal(second, third)
   })
 
   nanoidSuite('changes ID length', async () => {
@@ -188,6 +196,12 @@ for (let type of ['node', 'browser']) {
     is(await customAlphabet('ab', 0)(), '')
   })
 
+  customAlphabetSuite('avoids infinite loop on non-integer size', async () => {
+    // `>=` stops a non-integer size from looping forever.
+    is((await customAlphabet('abc')(2.1)).length, 3)
+    is((await customAlphabet('abc', 2.1)()).length, 3)
+  })
+
   customAlphabetSuite('changes size', async () => {
     let nanoidA = customAlphabet('a')
     let id = await nanoidA(10)
@@ -248,6 +262,12 @@ nativeSuite('is ready for 0 and negative size', async () => {
   is(await native.customAlphabet('abc', -5)(), '')
   is(await native.customAlphabet('ab')(0), '')
   is(await native.customAlphabet('ab', 0)(), '')
+})
+
+nativeSuite('avoids infinite loop on non-integer size', async () => {
+  is((await native.customAlphabet('abc')(2.1)).length, 3)
+  is((await native.customAlphabet('abc', 2.1)()).length, 3)
+  is((await native.nanoid(2.1)).length, 2)
 })
 
 nativeSuite('generates IDs', async () => {

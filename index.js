@@ -23,8 +23,8 @@ let fillPool = bytes => {
 }
 
 let random = bytes => {
-  // `-=` convert `bytes` to number to prevent `valueOf` abusing
-  fillPool((bytes -= 0))
+  // `|=` convert `bytes` to number to prevent `valueOf` abusing and pool pollution
+  fillPool((bytes |= 0))
   return pool.subarray(poolOffset - bytes, poolOffset)
 }
 
@@ -58,7 +58,8 @@ let customRandom = (alphabet, defaultSize, getRandom) => {
       while (i--) {
         // Adding `|| ''` refuses a random byte that exceeds the alphabet size.
         id += alphabet[bytes[i] & mask] || ''
-        if (id.length === size) return id
+        // `>=` stops a non-integer size from looping forever.
+        if (id.length >= size) return id
       }
     }
   }
@@ -68,8 +69,8 @@ let customAlphabet = (alphabet, size = 21) =>
   customRandom(alphabet, size, random)
 
 let nanoid = (size = 21) => {
-  // `-=` convert `size` to number to prevent `valueOf` abusing
-  fillPool((size -= 0))
+  // `|=` convert `size` to number to prevent `valueOf` abusing and pool pollution
+  fillPool((size |= 0))
   let id = ''
   // We are reading directly from the random pool to avoid creating new array
   for (let i = poolOffset - size; i < poolOffset; i++) {

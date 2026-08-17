@@ -1,5 +1,5 @@
 let { test } = require('uvu')
-let { is, match, ok } = require('uvu/assert')
+let { is, match, ok, not } = require('uvu/assert')
 
 let { nanoid, customAlphabet } = require('../non-secure')
 let { urlAlphabet } = require('..')
@@ -56,6 +56,14 @@ test('nanoid / has flat distribution', () => {
   ok(max - min <= 0.05)
 })
 
+test('nanoid / avoids pool pollution, infinite loop', () => {
+  // A non-integer size is truncated instead of adding an extra character.
+  is(nanoid(2.1).length, 2)
+  let second = nanoid()
+  let third = nanoid()
+  not.equal(second, third)
+})
+
 test('customAlphabet / has options', () => {
   let nanoidA = customAlphabet('a', 5)
   is(nanoidA(), 'aaaaa')
@@ -96,6 +104,16 @@ test('nanoid / does not hang on negative size', () => {
 test('customAlphabet / does not hang on negative size', () => {
   is(customAlphabet('abcdef')(-1), '')
   is(customAlphabet('abcdef', -5)(), '')
+})
+
+test('customAlphabet / avoids pool pollution, infinite loop', () => {
+  let ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+  let nanoid2 = customAlphabet(ALPHABET)
+  // A non-integer size is truncated instead of adding an extra character.
+  is(nanoid2(2.1).length, 2)
+  let second = nanoid2()
+  let third = nanoid2()
+  not.equal(second, third)
 })
 
 test.run()

@@ -1,5 +1,5 @@
 let { test } = require('uvu')
-let { is, ok, equal, match } = require('uvu/assert')
+let { is, ok, equal, match, not } = require('uvu/assert')
 
 let browser = require('../index.browser.js')
 let node = require('../index.js')
@@ -32,6 +32,14 @@ for (let type of ['node', 'browser']) {
         match(urlAlphabet, new RegExp(char, "g"))
       }
     }
+  })
+
+  test(`${type} / nanoid / avoids pool pollution, infinite loop`, () => {
+    // A non-integer size is truncated instead of shifting the pool offset.
+    is(nanoid(2.1).length, 2)
+    let second = nanoid()
+    let third = nanoid()
+    not.equal(second, third)
   })
 
   test(`${type} / nanoid / changes ID length`, () => {
@@ -125,6 +133,13 @@ for (let type of ['node', 'browser']) {
     is(customAlphabet('ab', 0)(), '')
   })
 
+  test(`${type} / customAlphabet / avoids infinite loop`, () => {
+    // `>=` stops a non-integer size from looping forever.
+    is(customAlphabet('abc')(2.1).length, 3)
+    is(customAlphabet('abc', 2.1)().length, 3)
+    is(customRandom('abc', 2.1, random)().length, 3)
+  })
+
   test(`${type} / customRandom / supports generator`, () => {
     let sequence = [2, 255, 3, 7, 7, 7, 7, 7, 0, 1]
     function fakeRandom(size) {
@@ -159,6 +174,13 @@ for (let type of ['node', 'browser']) {
     for (let i = 0; i < urlAlphabet.length; i++) {
       is(random(10).length, 10)
     }
+  })
+
+  test(`${type} / random / avoids pool pollution on non-integer size`, () => {
+    is(random(2.1).length, 2)
+    let second = nanoid()
+    let third = nanoid()
+    not.equal(second, third)
   })
 
   test(`${type} / random / generates random buffers`, () => {
