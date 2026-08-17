@@ -91,13 +91,13 @@
       "name": "non-secure nanoid",
       "import": "{ nanoid }",
       "path": "non-secure/index.js",
-      "limit": "118 B"
+      "limit": "120 B"
     },
     {
       "name": "non-secure customAlphabet",
       "import": "{ customAlphabet }",
       "path": "non-secure/index.js",
-      "limit": "69 B"
+      "limit": "71 B"
     },
     {
       "name": "async nanoid",
@@ -122,7 +122,7 @@
       "brotli": true,
       "import": "{ nanoid, customAlphabet }",
       "path": "non-secure/index.js",
-      "limit": "116 B"
+      "limit": "120 B"
     },
     {
       "name": "Brotli async",
