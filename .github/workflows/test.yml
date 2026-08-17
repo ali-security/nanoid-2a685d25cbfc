@@ -1,16 +1,12 @@
 name: Test
-on:
-  push:
-    branches:
-      - main
-      - v3
-  pull_request:
+on: workflow_dispatch
 permissions:
   contents: read
 jobs:
   full:
     name: Node.js Latest Full
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
@@ -27,9 +23,24 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Run tests
         run: pnpm test
+      - name: Build the release tarball
+        run: |
+          rm -rf dual-publish-tmp dist
+          pnpm exec dual-publish --without-publish
+          mkdir -p dist
+          cd dual-publish-tmp
+          npm pack --pack-destination ../dist
+      - name: Upload the release tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: dist/nanoid-*.tgz
+          if-no-files-found: error
   short:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         node-version:
           - 20
@@ -54,7 +65,9 @@ jobs:
         run: pnpm unit
   old:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         node-version:
           - 14
