@@ -1,6 +1,7 @@
 let { suite } = require('uvu')
 let { spy } = require('nanospy')
 let { is, match, ok } = require('uvu/assert')
+let Module = require('module')
 let crypto = require('crypto')
 
 global.crypto = {
@@ -176,6 +177,17 @@ for (let type of ['node', 'browser']) {
     ok(max - min <= 0.05)
   })
 
+  customAlphabetSuite('is ready for 0 and negative size', async () => {
+    is(await customAlphabet('abc')(0), '')
+    is(await customAlphabet('abc', 0)(), '')
+    is(await customAlphabet('abc')(-1), '')
+    is(await customAlphabet('abc', -5)(), '')
+    // `ab` fills the bitmask, so no byte is ever refused and the loop can
+    // never leave `id` empty to exit by accident
+    is(await customAlphabet('ab')(0), '')
+    is(await customAlphabet('ab', 0)(), '')
+  })
+
   customAlphabetSuite('changes size', async () => {
     let nanoidA = customAlphabet('a')
     let id = await nanoidA(10)
@@ -199,3 +211,53 @@ for (let type of ['node', 'browser']) {
 
   customAlphabetSuite.run()
 }
+
+// `async/index.native.js` is the React Native build with its own copy of the
+// generator loop. It requires `expo-random`, which is not installed here, so
+// load it with that require stubbed out to give it the same coverage.
+let NATIVE_BYTES = [220, 215, 129, 35, 242, 202, 137, 180]
+
+function loadNative() {
+  let getRandomBytesAsync = async size => {
+    let bytes = new Uint8Array(size)
+    for (let i = 0; i < size; i++) {
+      bytes[i] = NATIVE_BYTES[i % NATIVE_BYTES.length]
+    }
+    return bytes
+  }
+  let origin = Module.prototype.require
+  Module.prototype.require = function (name, ...args) {
+    if (name === 'expo-random') return { getRandomBytesAsync }
+    return origin.call(this, name, ...args)
+  }
+  try {
+    return require('../async/index.native.js')
+  } finally {
+    Module.prototype.require = origin
+  }
+}
+
+let native = loadNative()
+
+let nativeSuite = suite('native / customAlphabet')
+
+nativeSuite('is ready for 0 and negative size', async () => {
+  is(await native.customAlphabet('abc')(0), '')
+  is(await native.customAlphabet('abc', 0)(), '')
+  is(await native.customAlphabet('abc')(-1), '')
+  is(await native.customAlphabet('abc', -5)(), '')
+  is(await native.customAlphabet('ab')(0), '')
+  is(await native.customAlphabet('ab', 0)(), '')
+})
+
+nativeSuite('generates IDs', async () => {
+  is(await native.customAlphabet('a', 5)(), 'aaaaa')
+  is(await native.customAlphabet('a')(10), 'aaaaaaaaaa')
+  let id = await native.nanoid()
+  is(id.length, 21)
+  for (let char of id) {
+    match(urlAlphabet, new RegExp(char, 'g'))
+  }
+})
+
+nativeSuite.run()
